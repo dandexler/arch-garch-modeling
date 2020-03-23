@@ -72,6 +72,7 @@ colnames(stocks_close_df) <- col_list
 setwd('#')
 write.csv(stocks_close_df, 'stocks.csv')
 
+
 stocks <- data.frame(stocks_close_df)
 plot(stocks$AAPL_r, col="black", main="AAPL Stock Return (Logarithmic)", xlab="", ylab="Daily Returns", lwd=2, type="l")
 
@@ -82,12 +83,97 @@ plot(stocks$AAPL_r, col="black", main="AAPL Stock Return (Logarithmic)", xlab=""
 # Testing for ARCH effects with Lagrange Multiplier 1 Lag Test
 for (column in colnames(stocks)) {
   print(paste('\nStock: ', column))
-  arch.test(arima(stocks[, column ][-1], order = c(0,0,0)), output = TRUE)
+  arch.test(arima(stocks[, column][-1], order = c(0,0,0)), output = TRUE)
 }
 
-# Will need to pull p-values from the above and select the top 5 most significant
+# Will need to pull LM test statistic from the above and select the top 5 most significant
+# Most significant: WMT, CSCO, WBA, MMM, NKE
+
+sig_stocks <- list('WMT', 'CSCO', 'WBA', 'MMM', 'NKE')
+
 # Pick one of the following models for each of the top 5: GARCH(1,1)- Normal, t-GARCH(1,1), QGARCH(1,1)-Normal, QGARCH(1,1)-t
+
+for (i in 1:length(sig_stocks) ) {
+  name <- paste(sig_stocks[i], '_r', sep='')
+  print("\n")
+  print("GARCH (1, 1) - Normal")
+  GARCH.N <- garchFit(formula= ~ garch(1,1), data=stocks[,name][-1],
+                      cond.dist="norm", include.mean = FALSE)
+  summary(GARCH.N)
+  
+  print("------------------------------------------------------------------------------")
+  print("GARCH (1, 1) - t")
+  
+  GARCH.t <- garchFit(formula= ~ garch(1,1), data=stocks[,name][-1], 
+                      cond.dist="std", include.mean = FALSE)
+  summary(GARCH.t)
+  
+  print("------------------------------------------------------------------------------")
+  print("QGARCH (1, 1) - Normal")
+  
+  Skew.GARCH.N <- garchFit(formula= ~ garch(1,1), data=stocks[,name][-1], 
+                           cond.dist="snorm",include.mean = FALSE)
+  summary(Skew.GARCH.N)
+  
+  print("------------------------------------------------------------------------------")
+  print("QGARCH (1, 1) - t")
+  
+  Skew.GARCH.t <- garchFit(formula= ~ garch(1,1), data=stocks[,name][-1], 
+                           cond.dist="sstd", include.mean = FALSE)
+  summary(Skew.GARCH.t)
+  break()
+}
+
 # Select based on lowest BIC value
+
+
+# WMT tGARCH(1,1) -6.44
+# CSCO QGARCH(1,1)-t -5.84
+# WBA t-GARCH(1,1) -5.66
+# MMM QGARCH(1,1)-t -6.27
+# NKE t-GARCH(1,1) -5.80
+
+# Predicting 30 day volatlity for WMT
+WMT.GARCH.t <- garchFit(formula= ~ garch(1,1), data=stocks$WMT_r[-1], cond.dist="std", include.mean = FALSE)
+summary(WMT.GARCH.t)
+
+WMT.preds <- predict(WMT.GARCH.t, 30)
+WMT.avg_volatility <- mean(WMT.preds$standardDeviation)
+
+
+# Predicting 30 day volatlity for WBA
+WBA.GARCH.t <- garchFit(formula= ~ garch(1,1), data=stocks$WBA_r[-1], cond.dist="std", include.mean = FALSE)
+summary(WBA.GARCH.t)
+
+WBA.preds <- predict(WBA.GARCH.t, 30)
+WBA.avg_volatility <- mean(WBA.preds$standardDeviation)
+
+
+# Predicting 30 day volatlity for NKE
+NKE.GARCH.t <- garchFit(formula= ~ garch(1,1), data=stocks$NKE_r[-1], cond.dist="std", include.mean = FALSE)
+summary(NKE.GARCH.t)
+
+NKE.preds <- predict(NKE.GARCH.t, 30)
+NKE.avg_volatility <- mean(NKE.preds$standardDeviation)
+
+
+# Predicting 30 day volatlity for CSCO
+CSCO.Skew.GARCH.t <- garchFit(formula= ~ garch(1,1), data=stocks$CSCO_r[-1], cond.dist="sstd", include.mean = FALSE)
+summary(CSCO.Skew.GARCH.t)
+
+CSCO.preds <- predict(CSCO.GARCH.t, 30)
+CSCO.avg_volatility <- mean(CSCO.preds$standardDeviation)
+
+
+
+# Predicting 30 day volatlity for MMM
+MMM.Skew.GARCH.t <- garchFit(formula= ~ garch(1,1), data=stocks$MMM_r[-1], cond.dist="sstd", include.mean = FALSE)
+summary(MMM.Skew.GARCH.t)
+
+MMM.preds <- predict(MMM.Skew.GARCH.t, 30)
+MMM.avg_volatility <- mean(MMM.preds$standardDeviation)
+
+
 # Forecast next 30 days of volatility
 # Rank in order of effect of market shock
 # Rank in order of persistence of market shock
