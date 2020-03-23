@@ -17,6 +17,8 @@ library(fGarch)
 library(rugarch)
 library(rvest)
 library(stringr)
+library(ggplot2)
+library(ggthemes)
 
 #################################################
 #
@@ -161,7 +163,7 @@ NKE.avg_volatility <- mean(NKE.preds$standardDeviation)
 CSCO.Skew.GARCH.t <- garchFit(formula= ~ garch(1,1), data=stocks$CSCO_r[-1], cond.dist="sstd", include.mean = FALSE)
 summary(CSCO.Skew.GARCH.t)
 
-CSCO.preds <- predict(CSCO.GARCH.t, 30)
+CSCO.preds <- predict(CSCO.Skew.GARCH.t, 30)
 CSCO.avg_volatility <- mean(CSCO.preds$standardDeviation)
 
 
@@ -173,7 +175,19 @@ summary(MMM.Skew.GARCH.t)
 MMM.preds <- predict(MMM.Skew.GARCH.t, 30)
 MMM.avg_volatility <- mean(MMM.preds$standardDeviation)
 
-
-# Forecast next 30 days of volatility
 # Rank in order of effect of market shock
 # Rank in order of persistence of market shock
+
+# Plot for volatility
+
+preds <- data.frame('day'=1:30,WMT.preds$standardDeviation, WBA.preds$standardDeviation, NKE.preds$standardDeviation, CSCO.preds$standardDeviation, MMM.preds$standardDeviation)
+p <- ggplot()+
+     geom_line(data = preds, aes(x = day, y = WMT.preds$standardDeviation ), color="#080F0F")+
+     geom_line(data = preds, aes(x = day, y = WBA.preds$standardDeviation ), color="#A4BAB7")+
+  geom_line(data = preds, aes(x = day, y = NKE.preds$standardDeviation ), color="#EFF2C0")+
+  geom_line(data = preds, aes(x = day, y = CSCO.preds$standardDeviation ), color="#BEA57D")+
+  geom_line(data = preds, aes(x = day, y = MMM.preds$standardDeviation ), color="#A52422")+
+  xlab("Day")+
+  ylab("Predicted Volatility")
+
+p
